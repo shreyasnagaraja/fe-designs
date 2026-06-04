@@ -1,0 +1,428 @@
+# SLS (Special Legal Status) — Frontend Implementation Spec
+## For: Bank Claude / IntelliJ GHCP Session
+## Feature: Update Date of Decease (Deceased special legal status)
+
+---
+
+## 0. GAP ANALYSIS — What Claude Got Wrong vs Figma Design
+
+This section documents the delta between the current Claude-generated screen (actual) and
+the Figma design (expected). Claude must fix ALL of these.
+
+| # | Element | Figma (Expected) | Claude (Actual) | Fix Required |
+|---|---------|-----------------|-----------------|--------------|
+| 1 | Page layout | Two-column: left=form fields, right=contextual info panel | Single column, no right panel | Add right info panel column |
+| 2 | Section: Official details | Separate section "Official details" with Name, Address, Date of Birth as read-only label-value rows | Name/Address/DOB shown without section header, no visual grouping | Add "Official details" section header + proper label-value layout |
+| 3 | Section: Deceased Information | Separate section "Deceased Information" with its own header | "Special legal status" shown without section grouping | Add "Deceased Information" section with header |
+| 4 | Date of decease field | Date input with calendar icon picker, value "18-08-2022", required (*) | Label shown but NO input rendered (empty) | Render as date input component with calendar icon, mark required |
+| 5 | Form of address field | Dropdown (select) with current value "Bodel van/Bodel van mev...", required (*) | Dropdown rendered but no current value preloaded | Preload current value from API response |
+| 6 | Right panel — form of address hints | List of available form of address options as clickable/informational links: "Erven van", "Erven van mevrouw", "Boedel van - pre selected (double check the value in old dialogs)", "Boedel van mevrouw" | ABSENT | Add right-panel info section with these hint values |
+| 7 | Right panel — current value | "Current value: NETHERLANDS" shown contextually next to country field | ABSENT | Add "Current value:" display in right panel for address country |
+| 8 | Postal address (executor) section | Separate sub-section "Postal address (executor)" with: Country dropdown (NETHERLANDS), Postcode + House number (two inputs side by side + search icon), Supplementary delivery info (resolved address shown), For the attention of (text input), Care of (text input) | Only single "Address:" label with resolved text shown | Full executor address section with all 5 sub-fields |
+| 9 | Postcode lookup | Postcode + house number = two side-by-side inputs + magnifier search icon that resolves to full address below | Not implemented | Implement postcode lookup interaction |
+| 10 | Required field indicators | Red asterisk (*) on "Date of decease" and "Form of address" | Not shown | Add required indicators |
+| 11 | Page header | "Update the date of decease" (sentence case, teal/dark green color) | "Update date of decease" (missing "the") | Fix copy: "Update the date of decease" |
+| 12 | Customer header bar | Customer full name (bold, large) + person icon + customer number | Rendered but styling differs | Ensure name is bold, icon present, number inline |
+| 13 | Trash/delete icon | Trash icon (bin) top right near Next button | Present but greyed/inactive | Match Figma styling |
+| 14 | Next button | Gold/amber filled button, "Next" label, top right | Greyed out (disabled state shown) | Button should be enabled when form is valid; amber color `#C8972A` approx |
+| 15 | Step indicator | "Step 1 of 2 ∨" top right with chevron | Present | Verify matches |
+| 16 | Progress bar | Teal filled progress bar at top (full width for step 1) | Present | Verify full-width fill for step 1 |
+| 17 | Back to view link | "< Back to view" chevron link top left | Present | Verify |
+| 18 | Section dividers | Subtle horizontal line between Official details / Deceased Information / Postal address sections | Not clearly separated | Add `<hr>` or border-bottom dividers between sections |
+
+---
+
+## 1. SCREEN IDENTITY
+
+- **Route/Page name:** `UpdateDeceasedView` (or `UpdateSpecialLegalStatusView`)
+- **Page title (h1):** `Update the date of decease`  ← exact copy, sentence case
+- **Wizard step:** Step 1 of 2
+- **Feature:** Special Legal Status (SLS) — subtype: Deceased
+
+---
+
+## 2. LAYOUT STRUCTURE
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ [progress bar - full width teal]                    Step 1 of 2 ∨   │
+├─────────────────────────────────────────────────────────────────────┤
+│ < Back to view                                                       │
+│ [CustomerName bold]  👤 [customerNumber]    [🗑 trash]  [Next btn]   │
+├─────────────────────────────────────────────────────────────────────┤
+│ Update the date of decease  (teal h1)                               │
+├──────────────────────────────────────┬──────────────────────────────┤
+│  LEFT COLUMN (form + view fields)    │  RIGHT COLUMN (context panel)│
+│                                      │                              │
+│  [Section: Official details]         │  Available form of addresses:│
+│  Name:          [value]              │  Erven van                   │
+│  Address:       [value multiline]    │  Erven van mevrouw           │
+│  Date of Birth: [value]              │  Boedel van - pre selected.. │
+│                                      │  Boedel van mevrouw          │
+│  ─────────────────────────────────   │                              │
+│  [Section: Deceased Information]     │  Current value:              │
+│  Special legal status  Deceased      │  NETHERLANDS                 │
+│  Date of decease*  [📅 date picker]  │                              │
+│  Form of address*  [dropdown ∨]      │  [resolved address display]  │
+│    Select a form of address here     │  Strijpsestraat 120          │
+│                                      │  5616 GT Eindhoven           │
+│  ─────────────────────────────────   │                              │
+│  [Section: Postal address(executor)] │                              │
+│  Country:  [NETHERLANDS dropdown ∨]  │                              │
+│  Postcode + House number:            │                              │
+│  [_5611 SP__] [6] [🔍]               │                              │
+│  Gabriël Metsulaan 6                 │                              │
+│  5611 SP Eindhoven                   │                              │
+│  Supplementary delivery info: [    ] │                              │
+│  For the attention of:    [    ]     │                              │
+│  Care of:                 [    ]     │                              │
+└──────────────────────────────────────┴──────────────────────────────┘
+```
+
+---
+
+## 3. DESIGN TOKENS (extract from existing CBT/FD components — reuse exactly)
+
+```
+Primary teal (headings, progress bar, links): #1B6B6B or your app's --color-primary-teal
+Section header text: bold, dark, ~14px
+Label text: regular, dark grey ~13px
+Value text (read-only): regular, medium grey ~13px
+Required asterisk: red (#D0021B or app var)
+Next button bg: amber/gold ~#C8972A, text: white, bold
+Disabled button bg: #CCCCCC
+Right panel text (hints): teal underlined links style
+Right panel label "Current value:": bold dark small
+Border/divider: 1px solid #E0E0E0
+Input border: 1px solid #CCCCCC, border-radius: 2px
+Dropdown chevron: dark grey icon
+```
+
+> **Rule for Claude:** Reuse the exact CSS variables and component tokens already defined
+> in the project. Do NOT hardcode colors. Reference the same token names used in CBT/FD components.
+
+---
+
+## 4. COMPONENT INVENTORY
+
+### 4A. Read-Only Display Fields (use existing InfoField/LabelValue component)
+
+These render as `Label: Value` pairs with no input element.
+
+| Field | Label text | Value source | Section |
+|-------|-----------|--------------|---------|
+| name | "Name:" | `customer.fullName` | Official details |
+| address | "Address:" | `customer.address` (multiline: street, postcode+city, country) | Official details |
+| dateOfBirth | "Date of Birth" | `customer.dateOfBirth` formatted DD-MM-YYYY | Official details |
+| specialLegalStatus | "Special legal status" | `slsData.specialLegalStatus` (display value e.g. "Deceased") | Deceased Information |
+| supplementaryDeliveryInfo | "Supplementary delivery info:" | resolved from postcode lookup, read-only display | Postal address |
+
+### 4B. Editable / Input Fields
+
+| Field | Component | Type | Required | Validation | Default/Preload |
+|-------|-----------|------|----------|-----------|-----------------|
+| `dateOfDecease` | DatePicker | date | YES (*) | valid date, not future | from API or empty |
+| `formOfAddress` | Select/Dropdown | enum | YES (*) | must select | from API current value |
+| `executorCountry` | Select/Dropdown | country list | NO | — | "NETHERLANDS" |
+| `executorPostcode` | TextInput | string | NO | NL postcode format (4 digits + 2 letters) | from API |
+| `executorHouseNumber` | TextInput | string/number | NO | numeric | from API |
+| `executorForAttentionOf` | TextInput | string | NO | max 100 chars | from API or empty |
+| `executorCareOf` | TextInput | string | NO | max 100 chars | from API or empty |
+
+### 4C. Action Components
+
+| Component | Type | Behavior |
+|-----------|------|----------|
+| Postcode search button | Icon button (🔍 magnifier) | On click: call postcode lookup API with postcode+houseNumber, populate resolved address below inputs |
+| Next button | Primary amber button | Enabled only when required fields (dateOfDecease, formOfAddress) are valid; navigates to Step 2 |
+| Trash/Delete icon | Icon button | Clears/resets the form or cancels (confirm existing behavior from CBT/FD) |
+| Back to view | Text link with `<` chevron | Navigates back to customer view |
+| Step 1 of 2 chevron | Collapse/expand indicator | Shows step summary on click (match existing wizard pattern) |
+
+---
+
+## 5. SECTIONS — Detailed Spec
+
+### Section 1: Official Details (read-only, no inputs)
+
+```
+Header: "Official details"  — bold, dark, 14px, section-header style
+─────────────────────────────────────────────────────────
+Name:           [customer.fullName]
+Address:        [street line 1]
+                [postcode + city]
+                [country]
+Date of Birth   [DD-MM-YYYY]
+─────────────────────────────────────────────────────────
+```
+- No edit capability
+- Address is multiline (3 lines)
+- Use existing read-only field component (same as CBT official details if present)
+
+### Section 2: Deceased Information
+
+```
+Header: "Deceased Information"  — bold, dark, 14px, section-header style
+─────────────────────────────────────────────────────────
+Special legal status    Deceased        ← read-only InfoField
+Date of decease*        [📅 DD-MM-YYYY] ← DatePicker, required
+Form of address*        [dropdown ∨   ] ← Select, required
+                        "Select a form of address here"  ← placeholder text below dropdown
+─────────────────────────────────────────────────────────
+```
+
+**Form of address dropdown options** (enum values to configure):
+- `ERVEN_VAN` → display: "Erven van"
+- `ERVEN_VAN_MEVROUW` → display: "Erven van mevrouw"
+- `BOEDEL_VAN` → display: "Boedel van" ← pre-selected default if no value
+- `BOEDEL_VAN_MEVROUW` → display: "Boedel van mevrouw"
+- Show full value in dropdown but truncate with ellipsis if too wide (see "Bodel van/Bodel van mev..." in Figma)
+
+### Section 3: Postal Address (executor)
+
+```
+Header: "Postal address (executor)"  — bold, dark, 14px, section-header style
+─────────────────────────────────────────────────────────
+Country:                [NETHERLANDS          ∨]   ← full width dropdown
+Postcode + House number:
+                        [5611 SP    ] [6] [🔍]     ← two inputs + search icon button inline
+                        Gabriël Metsulaan 6        ← resolved address (read-only, shown after lookup)
+                        5611 SP Eindhoven
+Supplementary delivery info:                       ← label only (resolved info shown above)
+For the attention of:   [________________]         ← text input
+Care of:                [________________]         ← text input
+─────────────────────────────────────────────────────────
+```
+
+**Postcode lookup behavior:**
+1. User enters postcode (format: `1234 AB`) and house number
+2. User clicks 🔍 icon
+3. API call: resolve postcode → returns street name + city
+4. Display resolved address as read-only text directly below the postcode+housenumber row
+5. If lookup fails: show inline error "Address not found"
+
+---
+
+## 6. RIGHT COLUMN — Context Panel
+
+This panel is STATIC / informational only. No inputs.
+
+```
+Available form of addresses:       ← bold label
+Erven van                          ← teal link style (not necessarily clickable)
+Erven van mevrouw
+Boedel van - pre selected          ← with note "(double check the value in old dialogs)"
+(double check the value in old dialogs)
+Boedel van mevrouw
+
+[spacer]
+
+Current value:                     ← bold dark label
+NETHERLANDS                        ← value text
+
+[spacer]
+
+Strijpsestraat 120                 ← current registered address (from customer data)
+5616 GT Eindhoven
+```
+
+**Rules:**
+- Right panel is non-scrolling, sticky or inline
+- "Available form of addresses:" entries styled as teal text (same as link color) — informational only
+- "Current value:" section shows the existing country on record
+- Bottom address block shows customer's current registered address for reference
+- Panel has no border, blends into page background
+
+---
+
+## 7. COMPLETE FIELD STATE TABLE
+
+| Field | State | Component | Notes |
+|-------|-------|-----------|-------|
+| Name | read-only | InfoField | from customer API |
+| Address | read-only | InfoField multiline | from customer API |
+| Date of Birth | read-only | InfoField | formatted DD-MM-YYYY |
+| Special legal status | read-only | InfoField | "Deceased" |
+| Date of decease | editable, required | DatePicker | calendar icon, DD-MM-YYYY format |
+| Form of address | editable, required | Select | 4 options, preload from API |
+| Executor Country | editable | Select | country list, default NETHERLANDS |
+| Executor Postcode | editable | TextInput | NL format, triggers lookup with house nr |
+| Executor House nr | editable | TextInput | numeric, inline with postcode |
+| Postcode search | action | IconButton | magnifier, triggers lookup |
+| Supplementary delivery info | read-only | text display | auto-populated from postcode lookup |
+| For the attention of | editable | TextInput | optional |
+| Care of | editable | TextInput | optional |
+
+---
+
+## 8. VALIDATION RULES
+
+```typescript
+// Required field validation (Next button guard)
+const isFormValid = computed(() => {
+  return (
+    !!formState.dateOfDecease &&         // must have value
+    isValidDate(formState.dateOfDecease) && // must be valid date
+    !!formState.formOfAddress             // must be selected
+  );
+});
+
+// Date of decease: DD-MM-YYYY format, not in future
+// Form of address: must be one of the 4 enum values
+// Postcode: regex /^\d{4}\s?[A-Z]{2}$/i (optional field but if entered, validate format)
+// House number: numeric only (optional)
+```
+
+---
+
+## 9. PINIA STORE SHAPE
+
+```typescript
+// store/slsDeceasedStore.ts
+interface SlsDeceasedState {
+  // Customer read-only data (fetched once on mount)
+  customer: {
+    fullName: string;
+    address: {
+      street: string;
+      postalCode: string;
+      city: string;
+      country: string;
+    };
+    dateOfBirth: string;           // ISO date string
+  } | null;
+
+  // SLS data from GET /sls/{customerId}
+  currentSlsData: {
+    specialLegalStatus: string;    // e.g. "DECEASED"
+    dateOfDecease: string | null;  // ISO date
+    formOfAddress: FormOfAddressEnum | null;
+    executorAddress: ExecutorAddress | null;
+  } | null;
+
+  // Editable form state (mirrors what will be PUT)
+  formState: {
+    dateOfDecease: string | null;
+    formOfAddress: FormOfAddressEnum | null;
+    executorCountry: string;
+    executorPostcode: string;
+    executorHouseNumber: string;
+    executorForAttentionOf: string;
+    executorCareOf: string;
+  };
+
+  // Postcode lookup
+  resolvedAddress: string | null;
+  isPostcodeLookupLoading: boolean;
+
+  // UI state
+  isLoading: boolean;
+  isSaving: boolean;
+  errorMessage: string | null;
+}
+
+type FormOfAddressEnum = 'ERVEN_VAN' | 'ERVEN_VAN_MEVROUW' | 'BOEDEL_VAN' | 'BOEDEL_VAN_MEVROUW';
+```
+
+---
+
+## 10. VUE COMPONENT STRUCTURE
+
+```
+UpdateDeceasedView.vue           ← page-level, route component
+├── WizardHeader.vue             ← reuse existing (progress bar, step indicator, Back/Next/Trash)
+├── CustomerHeaderBar.vue        ← reuse existing (name + customer number)
+├── OfficialDetailsSection.vue   ← read-only section (reuse from CBT/FD if exists)
+├── DeceasedInfoSection.vue      ← NEW: special legal status + date + formOfAddress
+│   ├── InfoField.vue            ← reuse existing
+│   ├── DatePickerInput.vue      ← reuse existing
+│   └── SelectInput.vue          ← reuse existing
+├── ExecutorAddressSection.vue   ← NEW: postal address section
+│   ├── SelectInput.vue          ← country
+│   ├── PostcodeLookup.vue       ← NEW: postcode + housenr + search button composite
+│   └── TextInput.vue            ← for attention of, care of
+└── SlsContextPanel.vue          ← NEW: right column informational panel
+```
+
+> **Rule for Claude:** Before creating any new component, check if CBT or FD already has an
+> equivalent (e.g. OfficialDetailsSection, InfoField, SelectInput, DatePickerInput).
+> Reuse existing components. Only create new ones for SLS-specific sections.
+
+---
+
+## 11. i18n / LABEL KEYS
+
+Use the existing i18n pattern from CBT/FD. Key prefix: `sls.deceased.`
+
+```json
+{
+  "sls": {
+    "deceased": {
+      "pageTitle": "Update the date of decease",
+      "sections": {
+        "officialDetails": "Official details",
+        "deceasedInfo": "Deceased Information",
+        "postalAddress": "Postal address (executor)"
+      },
+      "fields": {
+        "name": "Name:",
+        "address": "Address:",
+        "dateOfBirth": "Date of Birth",
+        "specialLegalStatus": "Special legal status",
+        "dateOfDecease": "Date of decease",
+        "formOfAddress": "Form of address",
+        "formOfAddressPlaceholder": "Select a form of address here",
+        "country": "Country:",
+        "postcodeHouseNumber": "Postcode + House number:",
+        "supplementaryDeliveryInfo": "Supplementary delivery info:",
+        "forAttentionOf": "For the attention of:",
+        "careOf": "Care of:"
+      },
+      "contextPanel": {
+        "availableFormOfAddresses": "Available form of addresses:",
+        "currentValue": "Current value:"
+      },
+      "formOfAddressOptions": {
+        "ERVEN_VAN": "Erven van",
+        "ERVEN_VAN_MEVROUW": "Erven van mevrouw",
+        "BOEDEL_VAN": "Boedel van",
+        "BOEDEL_VAN_MEVROUW": "Boedel van mevrouw"
+      }
+    }
+  }
+}
+```
+
+---
+
+## 12. PROMPTS FOR BANK CLAUDE SESSION
+
+### Prompt A — Fix the existing component
+
+```
+I have an existing Vue 3 component `UpdateDeceasedView.vue` that was generated 
+but does not match the design. Apply ALL of the following fixes:
+
+LAYOUT FIX:
+- Convert to two-column layout: left column = form (70% width), 
+  right column = context panel (30% width)
+- The right column is static/informational only (no inputs)
+
+RIGHT COLUMN — add this panel:
+  Title: "Available form of addresses:" (bold)
+  List items (teal text style, same as link color):
+    - "Erven van"
+    - "Erven van mevrouw"
+    - "Boedel van - pre selected (double check the value in old dialogs)"
+    - "Boedel van mevrouw"
+  Then: "Current value:" (bold label) + executorCountry value from store
+  Then: customer's current registered address (street + postcode + city)
+
+SECTION FIXES:
+1. Add "Official details" section header above Name/Address/DOB fields
+2. Add "Deceased Information" section header above special legal status fields  
+3. Add "Postal address (executor)" section header above executor address fields
+4. Add horizontal dividers between all three sections
+
+FIELD FIXES:
+5. Date of decease: MUST render as DatePicker input with calendar icon, not as emp
