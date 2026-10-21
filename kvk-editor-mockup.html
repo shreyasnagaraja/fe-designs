@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KVK Extract Editor – mock-up v1+v2</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#1d2433;background:#f4f6fa}
+button{font:inherit;cursor:pointer}
+code{font-family:ui-monospace,Menlo,monospace}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:16px 32px;background:#fff;border-bottom:1px solid #dde2ec}
+h1{margin:0;font-size:20px}
+h2{margin:0;font-size:15px}
+main{max-width:1240px;margin:0 auto;padding:24px 32px 120px;display:flex;flex-direction:column;gap:20px}
+section{background:#fff;border:1px solid #dde2ec;border-radius:10px;overflow:hidden}
+.pad{padding:20px 24px;display:flex;flex-direction:column;gap:16px}
+.pill{font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px}
+.amber{background:#fff1d6;color:#7a4a00}.green{background:#dcf3e4;color:#0f5a2b}
+.seg{display:flex;border:1px solid #b9c3d9;border-radius:8px;overflow:hidden;width:fit-content}
+.seg button{min-height:44px;padding:0 18px;border:0;background:#fff;color:#1d2433;font-weight:600}
+.seg button.on{background:#1f4fd8;color:#fff}
+.lbl{font-size:12px;font-weight:700;color:#4a5470;text-transform:uppercase;letter-spacing:.04em}
+.row{display:flex;flex-wrap:wrap;gap:16px;align-items:stretch}
+.drop{flex:1 1 360px;border:2px dashed #b9c3d9;border-radius:8px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#f8faff}
+.btn{min-height:44px;padding:0 20px;border-radius:8px;border:1px solid #b9c3d9;background:#fff;font-weight:600;color:#1d2433}
+.btn.primary{background:#1f4fd8;border-color:#1f4fd8;color:#fff;font-weight:650}
+.btn.ghost{border-color:#1f4fd8;color:#1f4fd8}
+.btn:disabled{background:#c9cfdd;border-color:#c9cfdd;color:#5b6479;cursor:not-allowed}
+input{height:40px;padding:0 10px;border:1px solid #b9c3d9;border-radius:6px;font:inherit;font-size:14px;width:100%}
+input.edited{background:#eef3ff;border-color:#1f4fd8}
+.banner{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-radius:8px;background:#fff4de;border:1px solid #f0c987;color:#6b3f00}
+.note{padding:12px 18px;border-radius:8px;background:#e6f6ec;border:1px solid #9ad3b0;font-size:13px;color:#0f5a2b}
+.head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;padding:16px 24px;border-bottom:1px solid #dde2ec}
+.scroll{overflow-x:auto}
+.tbl{min-width:860px}
+.thead,.prow{display:grid;grid-template-columns:220px minmax(0,1fr);gap:16px;padding:14px 24px}
+.thead{padding:10px 24px;background:#eef1f7;font-size:12px;font-weight:700;color:#4a5470;text-transform:uppercase;letter-spacing:.04em}
+.prow{border-top:1px solid #eceff5;align-items:start}
+.pname{display:flex;flex-direction:column;gap:2px;padding-top:8px}
+.pname b{display:inline-flex;align-items:center;gap:6px;font-size:14px}
+.pname small{font-size:12px;color:#4a5470}
+.paths{display:flex;flex-direction:column;gap:8px}
+.path{display:grid;grid-template-columns:26px minmax(0,1fr) minmax(0,1fr) 44px;gap:10px;align-items:center}
+.path code{font-size:12px;color:#4a5470;overflow-wrap:anywhere}
+.badge{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;background:#e3e7f0;color:#3a4562}
+.badge.act{background:#1f4fd8;color:#fff}
+.x{width:44px;height:40px;border:1px solid #d7dbe6;border-radius:6px;background:#fff;color:#a3262a;font-size:18px}
+.locked{opacity:.45;pointer-events:none}
+.review{border:2px solid #1f4fd8}
+.rhead{padding:16px 24px;background:#eef3ff;border-bottom:1px solid #c9d7fb;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px}
+.cols{display:flex;flex-wrap:wrap;gap:24px;padding:20px 24px}
+.cols>div{display:flex;flex-direction:column;gap:8px;flex:1 1 280px}
+.cols h3{margin:0;font-size:13px;color:#4a5470;text-transform:uppercase;letter-spacing:.04em}
+.kv{display:flex;justify-content:space-between;gap:12px;font-size:14px;padding:6px 0;border-bottom:1px solid #eceff5}
+.pair{display:grid;grid-template-columns:110px minmax(0,1fr) 20px minmax(0,1fr);gap:10px;font-size:13px;padding:6px 0;border-bottom:1px solid #eceff5}
+.pair s{color:#8a3a3a}.pair strong{color:#0f5a2b}
+.warn{font-size:13px;padding:10px 12px;border-radius:6px;background:#fff4de;color:#6b3f00}
+.path-chip{font-size:12px;background:#f4f6fa;padding:6px 10px;border-radius:6px;overflow-wrap:anywhere}
+.xmlbtn{width:100%;min-height:52px;padding:0 24px;display:flex;justify-content:space-between;align-items:center;background:#fff;border:0;font-size:15px;font-weight:650}
+textarea{display:block;width:100%;min-height:240px;border:0;border-top:1px solid #dde2ec;padding:16px 24px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.55;background:#101828;color:#dbe4f5}
+.bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #dde2ec;padding:14px 32px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <h1>KVK Extract Editor</h1><span class="pill amber">ACC · non-prod only</span><span id="deidBadge" class="pill green hide">De-identified</span>
+  </div>
+  <span style="font-size:13px;color:#4a5470">Feature flag: <code style="background:#eef1f7;padding:2px 6px;border-radius:4px">kvkExtractSandbox</code> on</span>
+</header>
+<main>
+  <section><div class="pad">
+    <h2>1 · Source extract and mode</h2>
+    <div class="row">
+      <div class="drop"><div><div style="font-weight:600;font-size:14px">kvk_extract_12345678.xml</div><div style="font-size:12px;color:#4a5470">18 KB · loaded · drop another file or paste XML to replace</div></div><button class="btn ghost">Upload / paste</button></div>
+      <div style="flex:1 1 360px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px"><span class="lbl" style="width:64px">Source</span>
+          <div class="seg"><button id="srcTest">Test data</button><button id="srcProd" class="on">Production</button></div></div>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px"><span class="lbl" style="width:64px">Mode</span>
+          <div class="seg"><button id="modeEdit" class="on">Edit extract</button><button id="modeCopy">Copy into new XML</button></div></div>
+        <div id="copyBox" class="hide" style="display:flex;flex-wrap:wrap;gap:12px">
+          <label class="lbl" style="display:flex;flex-direction:column;gap:4px">New KVK number<input value="99887766" style="width:160px;font-family:ui-monospace,Menlo,monospace"></label>
+          <label class="lbl" style="display:flex;flex-direction:column;gap:4px">New name (optional)<input value="Studio Nova B.V. (copy)" style="width:260px"></label>
+        </div>
+      </div>
+    </div>
+    <div id="banner" class="banner"><div style="flex:1 1 360px"><b style="font-size:14px">Production extract: personal data must be replaced first</b><div style="font-size:13px">Editing and saving stay locked until you de-identify. Names, dates of birth, addresses, company names and BSN/TIN values are replaced everywhere in the file.</div></div><button id="deidBtn" class="btn primary">De-identify</button></div>
+    <div id="doneNote" class="note hide">The original production XML is no longer held in this browser. All fields below show the de-identified values and can be edited as usual.</div>
+  </div></section>
+
+  <section id="review" class="review hide">
+    <div class="rhead"><h2>Review de-identification</h2><div style="display:flex;gap:10px"><button id="cancelBtn" class="btn">Cancel</button><button id="acceptBtn" class="btn primary">Accept and use this XML</button></div></div>
+    <div class="cols">
+      <div><h3>Replaced</h3>
+        <div class="kv"><span>Names</span><b>3</b></div><div class="kv"><span>Dates of birth</span><b>1</b></div><div class="kv"><span>Addresses</span><b>2</b></div><div class="kv"><span>Company names</span><b>2</b></div><div class="kv"><span>BSN / TIN values</span><b>1</b></div></div>
+      <div style="flex:2 1 420px"><h3>Before → after</h3>
+        <div class="pair"><span>Name</span><s>A. Voorbeeld</s><span>→</span><strong>M. Bakker</strong></div>
+        <div class="pair"><span>Date of birth</span><s>1981-06-14</s><span>→</span><strong>1982-02-09</strong></div>
+        <div class="pair"><span>Address</span><s>Voorbeeldstraat 9, 1181 AB Amstelveen</s><span>→</span><strong>Kerkplein 7, 5611 EM Eindhoven</strong></div>
+        <div class="pair"><span>Company</span><s>Voorbeeld Holding B.V.</s><span>→</span><strong>Studio Nova B.V.</strong></div>
+        <div class="pair"><span>BSN</span><s>123456782</s><span>→</span><strong>987654321</strong></div></div>
+    </div>
+    <div class="cols" style="padding-top:0">
+      <div style="flex:1 1 420px"><h3>Also replaced in places not in the parameter list (4)</h3>
+        <code class="path-chip">/kvkExtract/vestigingen/vestiging[1]/contactpersoon</code><code class="path-chip">/kvkExtract/historie/mutatie[3]/omschrijving</code><code class="path-chip">/kvkExtract/bestuurder[1]/handtekening/@naam</code><code class="path-chip">/kvkExtract/gerelateerd/bestuurder/overig</code></div>
+      <div style="flex:1 1 420px"><h3 style="color:#7a4a00">Warnings (1)</h3><div class="warn">A 9-digit number at <code>/…/registratie/rsin</code> looks like a BSN but was not replaced, because it may be an RSIN. Check it before saving.</div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head"><div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><h2>2 · Parameters read from the extract</h2>
+      <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#4a5470"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1f4fd8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z"/></svg>holds personal data</span></div>
+      <input placeholder="Filter parameters" style="width:220px"></div>
+    <div class="scroll"><div id="tbl" class="tbl"><div class="thead"><span>Parameter</span><span>Xpaths in priority order · edit value or remove</span></div><div id="rows"></div></div></div>
+  </section>
+
+  <section>
+    <button id="xmlBtn" class="xmlbtn"><span>3 · Raw XML (live, edits sync with the fields above)</span><span id="xmlLbl" style="font-size:13px;color:#1f4fd8">Show</span></button>
+    <textarea id="xmlArea" class="hide" readonly aria-label="Raw XML">&lt;kvkExtract&gt;
+  &lt;kvkNummer&gt;12345678&lt;/kvkNummer&gt;
+  &lt;handelsnaam&gt;Studio Nova B.V.&lt;/handelsnaam&gt;
+  ...
+&lt;/kvkExtract&gt;</textarea>
+  </section>
+</main>
+<div class="bar"><span id="barNote" style="font-size:13px;color:#4a5470"></span>
+  <div style="display:flex;gap:10px;flex-wrap:wrap"><button id="dlBtn" class="btn">Download XML</button><button id="saveBtn" class="btn primary">Save as new XML to database</button></div></div>
+
+<script>
+// Illustrative, fictional data. real = what a production extract shows; fake = after de-identification or in test data.
+var shield='<svg role="img" aria-label="Holds personal data" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1f4fd8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z"/></svg>';
+var DATA=[
+ {l:'KVK number',h:'1 path · kept as is',pii:0,p:[['/kvkExtract/kvkNummer','12345678','12345678',1,0]]},
+ {l:'Trade name',h:'3 paths · 1 = used by MPMA',pii:1,p:[['/…/handelsnaam/volledigeNaam','Voorbeeld Holding B.V.','Studio Nova B.V.',1,0],['/…/eersteHandelsnaam','','',0,0],['/…/statutaireNaam','Voorbeeld Holding BV','Studio Nova BV',0,0]]},
+ {l:'Company address',h:'2 paths',pii:1,p:[['/…/bezoekadres/volledig','Voorbeeldlaan 1, 1082 MD Amsterdam','Lindenstraat 24, 3511 KB Utrecht',1,0],['/…/postadres/volledig','','',0,0]]},
+ {l:'Foundation date',h:'2 paths',pii:0,p:[['/…/datumOprichting','2012-03-01','2012-03-01',1,0],['/…/registratie/datumAanvang','2012-03-01','2012-03-01',0,0]]},
+ {l:'SBI (main)',h:'1 path',pii:0,p:[['/…/sbiActiviteit[@primair="true"]/code','64.20','64.20',1,1]]},
+ {l:'Director 1 · name',h:'2 paths',pii:1,p:[['/…/bestuurder[1]/volledigeNaam','A. Voorbeeld','M. Bakker',1,0],['/…/bestuurder[1]/handtekening/naam','A. Voorbeeld','M. Bakker',0,0]]},
+ {l:'Director 1 · date of birth',h:'1 path',pii:1,p:[['/…/bestuurder[1]/geboortedatum','1981-06-14','1982-02-09',1,0]]},
+ {l:'Director 1 · address',h:'1 path',pii:1,p:[['/…/bestuurder[1]/woonadres/volledig','Voorbeeldstraat 9, 1181 AB Amstelveen','Kerkplein 7, 5611 EM Eindhoven',1,0]]},
+ {l:'Director 1 · BSN',h:'1 path',pii:1,p:[['/…/bestuurder[1]/bsn','123456782','987654321',1,0]]}
+];
+var S={source:'prod',step:'none',mode:'edit',xml:false};
+function $(i){return document.getElementById(i)}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
+function render(){
+  var prod=S.source==='prod',done=S.step==='done',locked=prod&&!done,real=prod&&!done;
+  $('srcTest').className=prod?'':'on';$('srcProd').className=prod?'on':'';
+  $('modeEdit').className=S.mode==='edit'?'on':'';$('modeCopy').className=S.mode==='copy'?'on':'';
+  $('copyBox').className=S.mode==='copy'?'':'hide';
+  $('banner').className='banner'+(prod&&S.step==='none'?'':' hide');
+  $('review').className='review'+(prod&&S.step==='review'?'':' hide');
+  $('doneNote').className='note'+(prod&&done?'':' hide');
+  $('deidBadge').className='pill green'+(prod&&done?'':' hide');
+  $('tbl').className='tbl'+(locked?' locked':'');
+  $('saveBtn').disabled=locked;$('dlBtn').disabled=locked;
+  $('barNote').textContent=locked?'Save is locked until the production extract is de-identified':'3 fields changed · not saved yet';
+  $('xmlArea').className=S.xml?'':'hide';$('xmlLbl').textContent=S.xml?'Hide':'Show';
+  var h='';
+  DATA.forEach(function(r){
+    h+='<div class="prow"><div class="pname"><b>'+r.l+(r.pii?shield:'')+'</b><small>'+r.h+'</small></div><div class="paths">';
+    r.p.forEach(function(p,i){
+      h+='<div class="path"><span class="badge'+(p[3]?' act':'')+'">'+(i+1)+'</span><code>'+p[0]+'</code><input value="'+esc(real?p[1]:p[2])+'" placeholder="(empty)"'+(p[4]?' class="edited"':'')+'><button class="x" aria-label="Remove this xpath node">×</button></div>';
+    });
+    h+='</div></div>';
+  });
+  $('rows').innerHTML=h;
+}
+$('srcTest').onclick=function(){S.source='test';S.step='none';render()};
+$('srcProd').onclick=function(){S.source='prod';S.step='none';render()};
+$('modeEdit').onclick=function(){S.mode='edit';render()};
+$('modeCopy').onclick=function(){S.mode='copy';render()};
+$('deidBtn').onclick=function(){S.step='review';render()};
+$('cancelBtn').onclick=function(){S.step='none';render()};
+$('acceptBtn').onclick=function(){S.step='done';render()};
+$('xmlBtn').onclick=function(){S.xml=!S.xml;render()};
+render();
+</script>
+</body>
+</html>
